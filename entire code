@@ -1,0 +1,65 @@
+import numpy as np
+
+# Simulation parameters
+open_time = 9 * 60  # 9 AM in minutes
+close_time = 16 * 60  # 4 PM in minutes
+poisson_lambda = 10  # time parameter in minutes
+service_time_min = 5  # minimum service time in minutes
+service_time_max = 20  # maximum service time in minutes
+num_doctors = 3  # number of doctors
+
+def simulate_clinic():
+    np.random.seed()  # Reset seed for each simulation for randomness
+    current_time = open_time
+    events = []
+
+    # Generate patient arrivals
+    while current_time < close_time:
+        inter_arrival_time = np.random.exponential(poisson_lambda)
+        current_time += inter_arrival_time
+        if current_time < close_time:
+            events.append((current_time, 'arrival'))
+    
+    # Process patient arrivals
+    num_patients = len(events)
+    wait_times = []
+    free_doctors = num_doctors
+    doctor_available_times = np.zeros(num_doctors)
+    for event_time, event_type in events:
+        # Find the next available doctor
+        if free_doctors > 0:
+            # If there's a free doctor, the patient does not wait
+            service_time = np.random.uniform(service_time_min, service_time_max)
+            free_doctors -= 1
+            for i in range(num_doctors):
+                if doctor_available_times[i] <= event_time:
+                    doctor_available_times[i] = event_time + service_time
+                    break
+        else:
+            # If no free doctor, the patient waits
+            wait_times.append(min(doctor_available_times) - event_time)
+            service_time = np.random.uniform(service_time_min, service_time_max)
+            next_doctor = np.argmin(doctor_available_times)
+            doctor_available_times[next_doctor] += service_time
+
+        # Update free doctors count
+        free_doctors = np.sum(doctor_available_times <= event_time)
+    
+    # Calculate summaries
+    num_waiting_patients = len(wait_times)
+    avg_wait_time = np.mean(wait_times) if wait_times else 0
+    closing_time = max(doctor_available_times)
+
+    return num_patients, num_waiting_patients, avg_wait_time, closing_time
+
+# Simulate the process once
+result = simulate_clinic()
+print("Single Simulation Result:")
+print(f"Number of patients: {result[0]}")
+print(f"Number of waiting patients: {result[1]}")
+print(f"Average waiting time: {result[2]:.2f} minutes")
+print(f"Office closing time: {result[3]:.2f} minutes past midnight (approximately {int(result[3] // 60)}:{int(result[3] % 60):02d} PM)")
+
+# Simulate the process 100 times and collect the results
+num_simulations = 100
+results = [simulate_clinic() for _ in range(num_simulations)] 
